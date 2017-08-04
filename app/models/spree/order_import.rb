@@ -5,7 +5,7 @@ module Spree
   class ImportError < StandardError; end;
   class OrderImport < ActiveRecord::Base
 
-    has_attached_file :data_file, path: ":rails_root/public/spree/product_imports/data-files/:basename_:timestamp.:extension", url: "/spree/product_imports/data-files/:basename_:timestamp.:extension"
+    has_attached_file :data_file, path: ":rails_root/public/spree/order_imports/data-files/:basename_:timestamp.:extension", url: "/spree/order_imports/data-files/:basename_:timestamp.:extension"
     validates_attachment :data_file, presence: true, content_type: { content_type: ["text/csv", "text/plain", "text/comma-separated-values", "application/octet-stream", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] }
 
     # after_destroy :destroy_orders
@@ -22,7 +22,7 @@ module Spree
         transition to: :failed, from: :started
       end
       before_transition to: [:failed] do |import|
-        import.product_ids = []
+        import.order_ids = []
         import.failed_at = Time.now
         import.completed_at = nil
       end
@@ -139,7 +139,7 @@ module Spree
     private
       # get_column_mappings
       # This method attempts to automatically map headings in the CSV files
-      # with fields in the product and variant models.
+      # with fields in the order and variant models.
       # If the headings of columns are going to be called something other than this,
       # or if the files will not have headings, then the manual initializer
       # mapping of columns must be used.
