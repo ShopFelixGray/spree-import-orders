@@ -5,9 +5,8 @@ module Spree
   class ImportError < StandardError; end;
   class OrderImport < ActiveRecord::Base
 
-    has_attached_file :data_file, path: ":rails_root/lib/etc/order_data/data-files/:basename.:extension", url: ":rails_root/lib/etc/order_data/data-files/:basename.:extension"
-    validates_attachment :data_file, presence: true
-    validates_attachment_content_type :data_file, content_type: ['text/plain', 'text/csv', 'application/vnd.ms-excel']
+    has_attached_file :data_file, path: ":rails_root/public/spree/product_imports/data-files/:basename_:timestamp.:extension", url: "/spree/product_imports/data-files/:basename_:timestamp.:extension"
+    validates_attachment :data_file, presence: true, content_type: { content_type: ["text/csv", "text/plain", "text/comma-separated-values", "application/octet-stream", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] }
     # after_destroy :destroy_orders
     serialize :order_ids, Array
 
@@ -66,9 +65,13 @@ module Spree
         @orders_before_import = Spree::Order.all
         @numbers_of_orders_before_import = @orders_before_import.map(&:number)
 
-        rows = CSV.read(self.data_file.path)
-        col = get_column_mappings(rows[0])
+        #rows = CSV.read(self.data_file.path, :encoding => 'windows-1251:utf-8')
+        # rows = CSV.read(self.data_file.path, "r:ISO-8859-1")
+        file_url = File.file?(self.data_file.path) ? self.data_file.path : self.data_file.url
+        csv_string=open(file_url,"r:ISO-8859-1").read.encode('utf-8')
+        rows = CSV.parse(csv_string, :col_sep => ',')
 
+        col = get_column_mappings(rows[0])
         previous_row = nil
         previous_order_information = nil
 

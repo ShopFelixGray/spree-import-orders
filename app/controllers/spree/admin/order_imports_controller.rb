@@ -13,7 +13,13 @@ module Spree
 
       def create
         @order_import = Spree::OrderImport.create(order_import_params)
-        @order_import.import_data!
+        begin
+          @order_import.import_data!
+          flash[:notice] = t('order_import_completed')
+        rescue StandardError => e
+          @order_import.failure
+          flash[:error] = t('order_import_error')
+        end
         # ImportOrdersJob.perform_later(@order_import)
         # flash[:notice] = t('order_import_processing')
         redirect_to admin_order_imports_path
