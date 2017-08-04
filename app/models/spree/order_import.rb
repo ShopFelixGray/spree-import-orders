@@ -7,6 +7,7 @@ module Spree
 
     has_attached_file :data_file, path: ":rails_root/public/spree/product_imports/data-files/:basename_:timestamp.:extension", url: "/spree/product_imports/data-files/:basename_:timestamp.:extension"
     validates_attachment :data_file, presence: true, content_type: { content_type: ["text/csv", "text/plain", "text/comma-separated-values", "application/octet-stream", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] }
+
     # after_destroy :destroy_orders
     serialize :order_ids, Array
 
