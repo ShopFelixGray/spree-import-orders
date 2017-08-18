@@ -4,7 +4,7 @@
 en:
   order_import_processing: 'Thanks, your import has been added to the queue for processing. You will receive an email confirming the import once it has completed.'
   order_import_completed: 'Thanks, your import has been completed'
-  order_import_error: 'Error in importing orders.'
+  order_import_error: 'Error in importing orders'
   order_imports: 'Import Orders'
   delete_order_import: "Delete"
   back_to_order_imports: "Back to Order Imports"

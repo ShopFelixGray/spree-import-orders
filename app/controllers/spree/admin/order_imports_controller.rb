@@ -18,7 +18,7 @@ module Spree
           flash[:notice] = t('order_import_completed')
         rescue StandardError => e
           @order_import.failure
-          flash[:error] = t('order_import_error')
+          flash[:error] = t('order_import_error')+" : #{e}"
         end
         # ImportOrdersJob.perform_later(@order_import)
         # flash[:notice] = t('order_import_processing')
