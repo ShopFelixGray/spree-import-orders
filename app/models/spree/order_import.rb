@@ -63,8 +63,7 @@ module Spree
 
     def _import_data
       begin
-        @orders_before_import = Spree::Order.all
-        @numbers_of_orders_before_import = @orders_before_import.map(&:number)
+        @numbers_of_orders_before_import = Spree::Order.pluck(:number)
 
         #rows = CSV.read(self.data_file.path, :encoding => 'windows-1251:utf-8')
         # rows = CSV.read(self.data_file.path, "r:ISO-8859-1")
