@@ -74,13 +74,21 @@ module Spree
         col = get_column_mappings(rows[0])
         previous_row = nil
         previous_order_information = nil
-
+        puts "ROWS COUNT"
+        puts rows.length
+        puts rows[1..-1].length
         rows[1..-1].each_with_index do |row, index|
           order_information = assign_col_row_mapping(row, col)
           order_information = validate_and_sanitize(order_information)
           next if @numbers_of_orders_before_import.include?(order_information[:order_id])
-          next unless Spree::Variant.find_by_sku(order_information[:sku])
-
+          good_skus = true
+          order_information[:sku].split("/").each do |sku|
+            good_skus = Spree::Variant.find_by(sku: sku).present?
+            break unless good_skus
+          end
+          next unless good_skus
+          
+          
           order_data = get_order_hash(order_information)
           if order_information[:shipping_same_as_billing] == true
             order_data[:bill_address_attributes] = order_data[:ship_address_attributes] = get_address_hash(order_information)
@@ -88,13 +96,14 @@ module Spree
             order_data[:bill_address_attributes] = get_address_hash(order_information, 'bill')
             order_data[:ship_address_attributes] = get_address_hash(order_information, 'ship')
           end
+
           order_data = add_custom_order_fields(order_information, order_data)
           user = Spree::User.find_by_email(order_information[:email]) || Spree::User.new(email: order_information[:email])
 
           if previous_row == nil
             previous_row = order_data
             previous_order_information = order_information
-          elsif previous_row[:number] == order_data[:number]
+          elsif previous_row[:number] == order_data[:number] && order_data[:number].present?
             order_data[:line_items_attributes]
             attributes = [:line_items_attributes, :payments_attributes, :adjustments_attributes, :shipments_attributes]
             attributes.each do |attribute|
@@ -109,6 +118,7 @@ module Spree
               end
             end
           else
+            puts "RUNNING IMPORT"
             order = Spree::Core::Importer::Order.import(user, previous_row)
             if order
               order_ids << order.number
@@ -119,6 +129,9 @@ module Spree
             previous_order_information = order_information
           end
 
+          puts rows.count 
+          puts index+2
+          puts "FINAL IF"
           if rows.count == index+2
             order = Spree::Core::Importer::Order.import(user, previous_row)
             if order
@@ -171,8 +184,19 @@ module Spree
         # order_information[:completed_at] = DateTime.strptime(order_information[:completed_at], "%d/%m/%y %H:%M")
         order_information[:completed_at] = order_information[:completed_at] || Time.now
         order_information[:quantity] = order_information[:quantity] || 1
-        order_information[:paid] = order_information[:paid] || (order_information[:price].to_i * order_information[:quantity].to_i)
+        order_information[:paid] = order_information[:paid] || (paid_calc(order_information))
         order_information
+      end
+
+      def paid_calc(order_information)
+        total = 0
+        prices = order_information[:price].split("/")
+        quantities = order_information[:quantity].split("/")
+
+        prices.each_with_index do |price, index|
+          total = total + (price.to_f * quantities[index].to_f)
+        end
+        total
       end
 
       def get_order_hash(order_information)
@@ -182,14 +206,12 @@ module Spree
           completed_at: order_information[:completed_at],
           currency: order_information[:currency],
           channel: order_information[:channel],
-          line_items_attributes: [
-            {sku: order_information[:sku], quantity: order_information[:quantity], price: order_information[:price], currency: order_information[:currency]}
-          ],
+          line_items_attributes: line_items_attributes_hash(order_information),
           payments_attributes: [
             { amount: order_information[:paid], payment_method: order_information[:payment_method], state: order_information[:payment_state], created_at: order_information[:payment_created_at]}
           ],
           adjustments_attributes: [
-            {amount: order_information[:adjustment_amount], label: order_information[:adjustment_label]}
+            { amount: order_information[:adjustment_amount], label: order_information[:adjustment_label]}
           ],
           shipments_attributes: [{
             tracking: order_information[:tracking],
@@ -197,11 +219,33 @@ module Spree
             shipped_at: order_information[:shipped_at],
             shipping_method: order_information[:shipping_method] || 'default',
             cost: order_information[:shipping_cost],
-            inventory_units: [
-              { sku: order_information[:sku] }
-            ]
+            inventory_units: inventory_units_info(order_information)
           }]
         }
+      end
+
+      def inventory_units_info(order_information)
+        skus = order_information[:sku].split("/")
+        quantities = order_information[:quantity].split("/")
+        sku_array = []
+        skus.each_with_index do |sku, index|
+          # Look for better way to do this
+          quantities[index].to_i.times do
+            sku_array << { sku: sku }
+          end
+        end
+        sku_array
+      end
+
+      def line_items_attributes_hash(order_information)
+        skus = order_information[:sku].split("/")
+        quantities = order_information[:quantity].split("/")
+        prices = order_information[:price].split("/")
+        line_items = []
+        skus.each_with_index do |sku, index|
+          line_items << { sku: sku, quantity: quantities[index], price: prices[index], currency: order_information[:currency] }
+        end
+        line_items
       end
 
       def get_address_hash(order_information, type = nil)
