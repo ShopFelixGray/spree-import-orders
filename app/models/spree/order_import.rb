@@ -80,7 +80,7 @@ module Spree
           order_information = validate_and_sanitize(order_information)
           next if @numbers_of_orders_before_import.include?(order_information[:order_id])
           good_skus = true
-          order_information[:sku].split("/").each do |sku|
+          order_information[:sku].split("|").each do |sku|
             good_skus = Spree::Variant.find_by(sku: sku).present?
             break unless good_skus
           end
@@ -119,7 +119,8 @@ module Spree
             order = Spree::Core::Importer::Order.import(user, previous_row)
             if order
               order_ids << order.number
-              order.shipments.last.finalize! # hack to decrease the inventory correctly
+              order.create_proposed_shipments # hack to decrease the inventory correctly
+              order.update_with_updater!
               after_order_created(previous_order_information, order)
             end
             previous_row = order_data
@@ -130,7 +131,8 @@ module Spree
             order = Spree::Core::Importer::Order.import(user, previous_row)
             if order
               order_ids << order.number
-              order.shipments.last.finalize! # hack to decrease the inventory correctly
+              order.create_proposed_shipments  #shipments.last.finalize! # hack to decrease the inventory correctly
+              order.update_with_updater!
               after_order_created(previous_order_information, order)
             end
           end
@@ -184,8 +186,8 @@ module Spree
 
       def paid_calc(order_information)
         total = 0
-        prices = order_information[:price].split("/")
-        quantities = order_information[:quantity].split("/")
+        prices = order_information[:price].split("|")
+        quantities = order_information[:quantity].split("|")
 
         prices.each_with_index do |price, index|
           total = total + (price.to_f * quantities[index].to_f)
@@ -219,22 +221,22 @@ module Spree
       end
 
       def inventory_units_info(order_information)
-        skus = order_information[:sku].split("/")
-        quantities = order_information[:quantity].split("/")
+        skus = order_information[:sku].split("|")
+        quantities = order_information[:quantity].split("|")
         sku_array = []
         skus.each_with_index do |sku, index|
           # Look for better way to do this
-          quantities[index].to_i.times do
+          #quantities[index].to_i.times do
             sku_array << { sku: sku }
-          end
+          #  end
         end
         sku_array
       end
 
       def line_items_attributes_hash(order_information)
-        skus = order_information[:sku].split("/")
-        quantities = order_information[:quantity].split("/")
-        prices = order_information[:price].split("/")
+        skus = order_information[:sku].split("|")
+        quantities = order_information[:quantity].split("|")
+        prices = order_information[:price].split("|")
         line_items = []
         skus.each_with_index do |sku, index|
           line_items << { sku: sku, quantity: quantities[index], price: prices[index], currency: order_information[:currency] }
