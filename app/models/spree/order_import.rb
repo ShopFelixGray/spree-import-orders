@@ -74,9 +74,7 @@ module Spree
         col = get_column_mappings(rows[0])
         previous_row = nil
         previous_order_information = nil
-        puts "ROWS COUNT"
-        puts rows.length
-        puts rows[1..-1].length
+
         rows[1..-1].each_with_index do |row, index|
           order_information = assign_col_row_mapping(row, col)
           order_information = validate_and_sanitize(order_information)
@@ -118,7 +116,6 @@ module Spree
               end
             end
           else
-            puts "RUNNING IMPORT"
             order = Spree::Core::Importer::Order.import(user, previous_row)
             if order
               order_ids << order.number
@@ -129,9 +126,6 @@ module Spree
             previous_order_information = order_information
           end
 
-          puts rows.count 
-          puts index+2
-          puts "FINAL IF"
           if rows.count == index+2
             order = Spree::Core::Importer::Order.import(user, previous_row)
             if order
